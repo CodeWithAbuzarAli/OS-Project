@@ -1,4 +1,4 @@
-FULL SAMPLE CODE (SQL + PL/SQL + TRIGGERS + MONGODB SHELL)
+FULL SAMPLE CODE (SQL + PL/SQL + TRIGGERS + MONGODB COMPLETE)
 
 ================================
 PART 1 — SQL (DDL + DML)
@@ -145,7 +145,6 @@ END;
 ================================
 PART 7 — TRIGGERS
 ================================
--- Auto-update last_modified
 CREATE OR REPLACE TRIGGER trg_update_timestamp
 BEFORE UPDATE ON employees
 FOR EACH ROW
@@ -154,7 +153,6 @@ BEGIN
 END;
 /
 
--- Salary Audit Trigger
 CREATE OR REPLACE TRIGGER trg_salary_audit
 AFTER UPDATE OF salary ON employees
 FOR EACH ROW
@@ -211,3 +209,44 @@ db.employees.updateOne(
 );
 
 db.employees.deleteOne({ employee_id: 100 });
+
+
+================================
+PART 9.1 — MONGODB RELATIONAL OPERATORS
+================================
+db.employees.find({ salary: { $gt: 50000 } });
+db.employees.find({ salary: { $gte: 30000 } });
+db.employees.find({ salary: { $lt: 40000 } });
+db.employees.find({ salary: { $ne: 30000 } });
+db.employees.find({ salary: { $gt: 40000, $lt: 80000 } });
+
+
+================================
+PART 9.2 — MONGODB LOGICAL OPERATORS
+================================
+db.employees.find({ $and: [ { department: "IT" }, { salary: { $gt: 50000 } } ] });
+db.employees.find({ $or: [ { department: "IT" }, { department: "HR" } ] });
+db.employees.find({ salary: { $not: { $gt: 50000 } } });
+db.employees.find({ $nor: [ { department: "IT" }, { salary: { $gt: 50000 } } ] });
+
+
+================================
+PART 9.3 — MONGODB SORT
+================================
+db.employees.find().sort({ salary: 1 });
+db.employees.find().sort({ salary: -1 });
+db.employees.find().sort({ department: 1, salary: -1 });
+
+
+================================
+PART 9.4 — MONGODB LIMIT & SKIP
+================================
+db.employees.find().limit(5);
+db.employees.find().skip(10);
+db.employees.find().skip(20).limit(10);
+
+
+================================
+PART 9.5 — MONGODB PROJECTION
+================================
+db.employees.find({ department: "IT" }, { name: 1, salary: 1, _id: 0 });
