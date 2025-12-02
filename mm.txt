@@ -1,0 +1,213 @@
+FULL SAMPLE CODE (SQL + PL/SQL + TRIGGERS + MONGODB SHELL)
+
+================================
+PART 1 — SQL (DDL + DML)
+================================
+CREATE TABLE departments (
+    department_id NUMBER PRIMARY KEY,
+    department_name VARCHAR2(100)
+);
+
+CREATE TABLE employees (
+    employee_id NUMBER PRIMARY KEY,
+    first_name VARCHAR2(50),
+    last_name VARCHAR2(50),
+    salary NUMBER(10, 2),
+    department_id NUMBER,
+    hire_date DATE,
+    last_modified TIMESTAMP,
+    CONSTRAINT fk_dept FOREIGN KEY (department_id)
+        REFERENCES departments(department_id)
+);
+
+CREATE TABLE employee_audit (
+    audit_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_id NUMBER,
+    operation VARCHAR2(10),
+    old_salary NUMBER,
+    new_salary NUMBER,
+    changed_by VARCHAR2(50),
+    changed_date TIMESTAMP
+);
+
+
+================================
+PART 2 — INSERT DATA
+================================
+INSERT INTO departments VALUES (10, 'IT');
+INSERT INTO departments VALUES (20, 'HR');
+
+INSERT INTO employees VALUES (100, 'John', 'Doe', 40000, 10, SYSDATE, NULL);
+INSERT INTO employees VALUES (101, 'Alice', 'Smith', 55000, 20, SYSDATE, NULL);
+
+COMMIT;
+
+
+================================
+PART 3 — PL/SQL BLOCK
+================================
+DECLARE
+    v_total NUMBER := 0;
+    v_counter NUMBER := 1;
+BEGIN
+    WHILE v_counter <= 5 LOOP
+        v_total := v_total + v_counter;
+        v_counter := v_counter + 1;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Total Sum = ' || v_total);
+END;
+/
+
+
+================================
+PART 4 — CURSOR EXAMPLE
+================================
+DECLARE
+    CURSOR emp_cursor IS
+        SELECT employee_id, first_name, salary FROM employees;
+
+    v_id employees.employee_id%TYPE;
+    v_name employees.first_name%TYPE;
+    v_salary employees.salary%TYPE;
+BEGIN
+    OPEN emp_cursor;
+
+    LOOP
+        FETCH emp_cursor INTO v_id, v_name, v_salary;
+        EXIT WHEN emp_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            'ID: ' || v_id || '  Name: ' || v_name || '  Salary: ' || v_salary
+        );
+    END LOOP;
+
+    CLOSE emp_cursor;
+END;
+/
+
+
+================================
+PART 5 — FUNCTION
+================================
+CREATE OR REPLACE FUNCTION get_annual_salary(p_emp_id NUMBER)
+RETURN NUMBER
+IS
+    v_salary NUMBER;
+BEGIN
+    SELECT salary INTO v_salary FROM employees WHERE employee_id = p_emp_id;
+    RETURN v_salary * 12;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN 0;
+END;
+/
+
+
+================================
+PART 6 — PROCEDURE
+================================
+CREATE OR REPLACE PROCEDURE update_employee_salary(
+    p_emp_id NUMBER,
+    p_inc_pct NUMBER
+)
+IS
+    v_old_salary NUMBER;
+    v_new_salary NUMBER;
+BEGIN
+    SELECT salary INTO v_old_salary
+    FROM employees
+    WHERE employee_id = p_emp_id;
+
+    UPDATE employees
+    SET salary = salary + (salary * p_inc_pct / 100)
+    WHERE employee_id = p_emp_id;
+
+    SELECT salary INTO v_new_salary
+    FROM employees
+    WHERE employee_id = p_emp_id;
+
+    DBMS_OUTPUT.PUT_LINE('Old Salary: ' || v_old_salary);
+    DBMS_OUTPUT.PUT_LINE('New Salary: ' || v_new_salary);
+
+    COMMIT;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Employee not found!');
+        ROLLBACK;
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        ROLLBACK;
+END;
+/
+
+
+================================
+PART 7 — TRIGGERS
+================================
+-- Auto-update last_modified
+CREATE OR REPLACE TRIGGER trg_update_timestamp
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    :NEW.last_modified := SYSTIMESTAMP;
+END;
+/
+
+-- Salary Audit Trigger
+CREATE OR REPLACE TRIGGER trg_salary_audit
+AFTER UPDATE OF salary ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO employee_audit (
+        employee_id, operation, old_salary, new_salary,
+        changed_by, changed_date
+    ) VALUES (
+        :NEW.employee_id, 'UPDATE', :OLD.salary, :NEW.salary,
+        USER, SYSTIMESTAMP
+    );
+END;
+/
+
+
+================================
+PART 8 — TRANSACTION BLOCK
+================================
+DECLARE
+    v_balance NUMBER := 5000;
+BEGIN
+    SAVEPOINT before_withdraw;
+
+    v_balance := v_balance - 3000;
+    DBMS_OUTPUT.PUT_LINE('Balance after withdraw: ' || v_balance);
+
+    IF v_balance < 0 THEN
+        ROLLBACK TO before_withdraw;
+        DBMS_OUTPUT.PUT_LINE('Transaction failed: Insufficient balance');
+    ELSE
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Transaction Successful!');
+    END IF;
+
+END;
+/
+
+
+================================
+PART 9 — MONGODB CRUD (Shell)
+================================
+db.employees.insertOne({
+    employee_id: 100,
+    name: "John Doe",
+    salary: 40000,
+    department: "IT"
+});
+
+db.employees.find({ department: "IT" });
+
+db.employees.updateOne(
+    { employee_id: 100 },
+    { $set: { salary: 50000 } }
+);
+
+db.employees.deleteOne({ employee_id: 100 });
